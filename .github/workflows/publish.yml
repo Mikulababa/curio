@@ -5,7 +5,6 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # UTC 时间，每六小时一次；避开整点以减少延迟
     - cron: "17 2,8,14,20 * * *"
 
 permissions:
@@ -30,19 +29,36 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: 安装本地翻译依赖
+      - name: 安装依赖
         run: python -m pip install -r requirements.txt
-      - name: 缓存英译中模型
-        uses: actions/cache@v4
+      - name: 恢复翻译缓存
+        uses: actions/cache/restore@v4
         with:
-          path: ~/.local/share/argos-translate/packages
-          key: curio-argos-en-zh-v1
+          path: .cache/translations.json
+          key: curio-gemini-translations-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            curio-gemini-translations-v1-
       - name: 运行基本测试
         run: python -m unittest discover -s tests -v
-      - name: 获取 RSS、离线翻译并生成文章数据
+      - name: 检查 Gemini 密钥
         env:
-          ARGOS_DEVICE_TYPE: cpu
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo '缺少仓库 Secret: GEMINI_API_KEY，停止发布以保留现有网页。'
+            exit 1
+          fi
+      - name: 获取 RSS、翻译标题和摘要、生成文章数据
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.1-flash-lite
+          CURIO_MAX_NEW_TRANSLATIONS: "12"
         run: python scripts/build.py
+      - name: 保存翻译缓存
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/translations.json
+          key: curio-gemini-translations-v1-${{ github.run_id }}-${{ github.run_attempt }}
       - name: 配置 GitHub Pages
         uses: actions/configure-pages@v5
       - name: 上传静态网站

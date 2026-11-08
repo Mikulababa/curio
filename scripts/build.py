@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
-from translation import LocalTranslator, has_chinese
+from translation import GeminiTranslator, has_chinese
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "web" / "data" / "articles.json"
@@ -25,7 +25,7 @@ MAX_PER_FEED = 12
 
 # (显示名, 栏目, 机构, 类型, RSS URL)
 # 先保留数量有限、直接可访问的源，不采用第三方 RSSHub 代理。
-# 中文与英文混合；英文标题与 RSS 导读将在构建时离线译为中文。
+# 中文与英文混合；英文标题与 RSS 导读在构建时使用 Gemini 译为简体中文。
 FEEDS = [
     ("中新网·文化", "文化与人文", "中国新闻网", "discovery", "https://www.chinanews.com.cn/rss/culture.xml"),
     ("中新网·生活", "生活与社会", "中国新闻网", "discovery", "https://www.chinanews.com.cn/rss/life.xml"),
@@ -135,7 +135,8 @@ def parse_feed(raw: bytes, source: str, topic: str, publisher: str, lane: str) -
         out.append({
             "id": hashlib.sha256(url.encode("utf-8")).hexdigest()[:18],
             "title": title,
-            "editor_title": "",  # 只有人工确认后才填写；空值显示原标题
+            "editor_title": "",  # 留给未来单独的标题编辑步骤；本次绝不填写
+            "translated_title": "",  # 只存忠实译文
             "summary": summary,
             "original_summary": summary if raw_summary and len(plain(raw_summary, 340)) >= 15 else "",
             "display_language": "zh" if has_chinese(title) else "en",
@@ -183,8 +184,8 @@ def dedupe(articles: list[dict]) -> list[dict]:
     return result
 
 
-def localize(items: list[dict], translator: LocalTranslator) -> None:
-    """仅转换 RSS 标题和摘要；保留原始信息供读者核对。"""
+def localize(items: list[dict], translator: GeminiTranslator) -> None:
+    """忠实翻译原文；不编辑标题或改变用户的推荐算法。"""
     translated = 0
     failed = 0
     for item in items:
@@ -194,37 +195,33 @@ def localize(items: list[dict], translator: LocalTranslator) -> None:
             simplified_title = translator.simplify(original_title)
             simplified_summary = translator.simplify(item.get("summary", ""))
             if simplified_title != original_title:
-                item["editor_title"] = simplified_title
+                item["translated_title"] = simplified_title
             item["summary"] = simplified_summary
             item["display_language"] = "zh"
             item["translation_status"] = "converted" if simplified_title != original_title or simplified_summary != item.get("original_summary", "") else "original"
             continue
-        chinese_title = translator.to_chinese(original_title)
-        if not chinese_title:
+
+        result = translator.translate_pair(original_title, original_summary)
+        if not result:
             item["display_language"] = "en"
             item["translation_status"] = "unavailable"
             failed += 1
             continue
-        item["editor_title"] = chinese_title[:200]
-        if original_summary:
-            chinese_summary = translator.to_chinese(original_summary)
-            if chinese_summary:
-                item["summary"] = chinese_summary[:260]
-                item["translation_status"] = "machine"
-            else:
-                item["summary"] = "该文章暂时没有可用的中文导读，可以打开原文了解详情。"
-                item["translation_status"] = "partial"
-        else:
-            item["summary"] = "订阅源未提供足够的文章摘要，可以打开原文了解详情。"
-            item["translation_status"] = "partial"
+
+        title_zh, summary_zh = result
+        item["translated_title"] = title_zh
+        item["summary"] = summary_zh if original_summary else "订阅源未提供足够的文章摘要，可以打开原文了解详情。"
+        item["translation_status"] = "machine" if original_summary else "partial"
         item["display_language"] = "zh"
         translated += 1
-    print(f"Localization: {translated} English titles translated, {failed} untranslated")
+
+    print(f"Localization: {translated} English articles translated, {failed} not translated; "
+          f"API calls: {translator.api_calls}, cache hits: {translator.cache_hits}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="生成拾趣阅读数据")
-    parser.add_argument("--no-download", action="store_true", help="不自动下载翻译模型；本地调试适用")
+    parser.add_argument("--no-translate", action="store_true", help="只抓取 RSS，不调用 Gemini；本地调试适用")
     args = parser.parse_args()
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
         results = list(pool.map(fetch, FEEDS))
@@ -236,7 +233,10 @@ def main() -> None:
     print(f"Found {len(items)} articles from {len(FEEDS) - len(failures)} / {len(FEEDS)} sources")
 
     if items:
-        localize(items, LocalTranslator(allow_download=not args.no_download))
+        translator = GeminiTranslator(api_key="" if args.no_translate else None)
+        localize(items, translator)
+        # 即使本轮无新译文，也生成缓存文件，让 Actions 可以正常保存。
+        translator._save_cache()
     else:
         # 保留项目内现有快照，避免偶发网络故障导致网站无内容。
         fallback = json.loads(OUTPUT.read_text(encoding="utf-8")) if OUTPUT.exists() else {}
@@ -245,7 +245,7 @@ def main() -> None:
             raise SystemExit("No available feeds and no local cached articles; aborting deployment")
         print("All sources unavailable; retaining bundled fallback articles")
 
-    chinese_count = sum(1 for item in items if item.get("display_language") == "zh" or has_chinese(item.get("editor_title", "")))
+    chinese_count = sum(1 for item in items if item.get("display_language") == "zh" or has_chinese(item.get("translated_title", "")) or has_chinese(item.get("editor_title", "")))
     if not chinese_count:
         raise SystemExit("No Chinese-readable articles available; aborting deployment")
     payload = {
@@ -254,7 +254,7 @@ def main() -> None:
         "sources_ok": len(FEEDS) - len(failures),
         "sources_total": len(FEEDS),
         "chinese_ready": chinese_count,
-        "note": "只使用公开 RSS 摘要。英文条目采用离线机器翻译，非全文翻译或人工审稿。",
+        "note": "只使用公开 RSS 摘要。英文条目用 Gemini 忠实翻译；不改写标题，非全文翻译或人工审稿。",
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

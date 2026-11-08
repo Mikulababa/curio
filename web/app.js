@@ -25,6 +25,7 @@
   function rand(list) { return list[Math.floor(Math.random() * list.length)]; }
   function idOf(a) { return a.id || a.url; }
   function current() { return state.history[state.cursor] || null; }
+  function displayTitle(a) { return a.editor_title || a.translated_title || a.title; }
   function status(message) { $('statusLine').textContent = message || ''; }
   function inPool() {
     return state.mode === 'saved' ? state.articles.filter(a => state.saved.has(idOf(a))) : state.articles;
@@ -126,11 +127,11 @@
     }
     $('topic').textContent = a.topic || '偶然发现';
     $('date').textContent = a.date || '';
-    $('title').textContent = a.editor_title || a.title;
+    $('title').textContent = displayTitle(a);
     $('summary').textContent = a.summary || '这篇文章暂时没有导读，可打开媒体原文。';
     $('source').textContent = '选自 ' + (a.source || '未知来源');
     const hasTranslation = ['machine', 'partial'].includes(a.translation_status);
-    const hasEditedTitle = Boolean(a.editor_title && a.editor_title !== a.title);
+    const hasEditedTitle = Boolean(displayTitle(a) && displayTitle(a) !== a.title);
     const hasOriginalSummary = Boolean(hasTranslation && a.original_summary);
     $('translationNote').hidden = !hasTranslation;
     $('translationNote').textContent = hasTranslation ? '机器翻译 · 可展开核对原文' : '';
@@ -199,7 +200,7 @@
     if (!a || state.readerOpen) return;
     readerReturnFocus = document.activeElement;
     $('readingTopic').textContent = a.topic || '偶然发现';
-    $('readingTitle').textContent = a.editor_title || a.title;
+    $('readingTitle').textContent = displayTitle(a);
     $('readingByline').textContent = [a.source || '未知来源', a.date || ''].filter(Boolean).join(' · ');
     const isFull = canShowLicensedText(a);
     $('readingType').textContent = isFull ? '站内全文 · 已标注使用许可' : '订阅源导读';
@@ -216,7 +217,7 @@
       const p = document.createElement('p');
       p.textContent = '该文章暂无可读内容。'; body.appendChild(p);
     }
-    const hasDifferentTitle = Boolean(a.editor_title && a.editor_title !== a.title);
+    const hasDifferentTitle = Boolean(displayTitle(a) && displayTitle(a) !== a.title);
     const hasOriginalSummary = Boolean(a.original_summary && a.original_summary !== a.summary);
     const showOriginal = hasDifferentTitle || hasOriginalSummary;
     $('readerOriginalToggle').hidden = !showOriginal;
@@ -277,7 +278,7 @@
       if (!Array.isArray(payload.articles)) throw Error('文章数据格式错误');
       // 保持 v0.5 的中文优先策略。
       state.articles = payload.articles.filter(a => a && a.title && a.url &&
-        (a.display_language === 'zh' || /[\u3400-\u9fff]/.test(a.editor_title || a.title)));
+        (a.display_language === 'zh' || /[\u3400-\u9fff]/.test(displayTitle(a))));
       state.cursor = -1; state.history = []; state.used.clear();
       if (!state.articles.length) {
         render(); status('暂无可用中文文章，请在 GitHub Actions 检查翻译和发布结果。'); return;

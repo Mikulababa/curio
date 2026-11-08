@@ -1,3 +1,2 @@
-# 仅在构建文章数据时使用，部署后的网页无需 Python 依赖。
-argostranslate>=1.9,<2
+# 仅在构建时需要；网页不加载这些 Python 包。
 opencc-python-reimplemented>=0.1.7,<1

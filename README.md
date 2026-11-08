@@ -6,81 +6,68 @@
 
 ## 功能
 
-- **随手翻阅**：一次展示一篇文章，支持滑动、按钮和键盘切换；桌面端与移动端采用居中的阅读布局。
-- **中文优先**：英文文章的标题与 RSS 摘要在构建时离线翻译为简体中文；中文标题自动转换为简体。
-- **站内阅读**：点击「阅读导读」，在本站阅读订阅源提供的完整导读，支持返回、收藏和核对原始信息。仅在内容明确允许转载时展示站内全文。
-- **保留原文**：可以展开查看原始英文标题和摘要，并随时跳转媒体原文。
-- **多元内容**：聚合科学、历史、文化、社会、经济等领域的公开 RSS 源。
-- **来源轮换**：随机抽取并分散相邻文章来源；不根据阅读时长建立用户画像。
-- **本地收藏**：收藏保存在当前浏览器，暂不跨设备同步。
-- **移动端适配**：支持手机、平板与桌面浏览器，可添加到手机主屏幕。
+- **随手翻阅**：一次展示一篇文章，支持滑动、按钮和键盘切换；兼容桌面和移动设备。
+- **中文优先**：英文标题与 RSS 摘要通过 Gemini 翻译成简体中文；繁体中文转换为简体。
+- **忠实翻译**：翻译与标题编辑分开。`translated_title` 保存译文，`editor_title` 为未来独立标题编辑预留；目前不自动改写标题。
+- **站内阅读**：可阅读 RSS 导读，查看原始标题和摘要；许可允许时可展示站内全文。
+- **来源轮换**：分散不同来源和领域的文章，不依赖阅读时长构建个人画像。
+- **本地收藏**：保存在浏览器中，无须注册。
 
-页面也保留了独立的[标题盲读实验](https://mikulababa.github.io/curio/experiment.html)。
+还可以访问[标题盲读实验](https://mikulababa.github.io/curio/experiment.html)。
 
 ## 技术实现
 
-项目使用 GitHub Pages 托管静态网页，通过 GitHub Actions 定时生成文章数据，无需常驻服务。
+网站由 GitHub Pages 托管。GitHub Actions 定时运行 Python 脚本，获取 RSS、去重、翻译标题和摘要，然后生成 `web/data/articles.json`。
 
-```text
-公开 RSS 订阅源
-        ↓
-Python 解析、去重和简单过滤
-        ↓
-Argos Translate 离线英译中、OpenCC 简繁转换
-        ↓
-web/data/articles.json
-        ↓
-GitHub Pages 静态网页
-```
+英文翻译使用 Gemini 3.1 Flash-Lite。成功翻译结果在构建端缓存，以原文及模型版本作为缓存键；每次最多新增翻译 12 篇文章，避免频繁触及免费额度。可通过 `CURIO_MAX_NEW_TRANSLATIONS` 调整上限。免费额度因项目而异，超额时本轮保留原文并等待后续更新。
 
-目前仅翻译订阅源提供的标题与摘要，不抓取或翻译文章全文。**机器翻译可能有错误，也不保证消除原标题的夸张措辞**；中文译文仅供快速浏览，事实应以原文为准。翻译模型不可用时，不会将英文原样冒充中文译文；日常信息流优先展示已有中文内容。
+翻译使用的是 RSS 标题与摘要，而非文章全文。译文可能有错误，原文始终可查。缓存只含公开文章的翻译结果，不含 API 密钥或个人阅读记录。
 
-站内阅读层不会绕过第三方网站的访问限制，也不会将 RSS 摘要冒充原文全文；外部媒体页面可能仍有广告或付费墙。
+## GitHub Pages 部署
+
+1. 将代码上传到 `main` 分支。在 **Settings → Pages** 选择 **GitHub Actions**。
+2. 前往 [Google AI Studio](https://aistudio.google.com/apikey) 创建 Gemini API 密钥，确认所选项目可使用免费层模型。
+3. 在仓库 **Settings → Secrets and variables → Actions → New repository secret** 创建名为 `GEMINI_API_KEY` 的 Secret，填入密钥。**不要将密钥写入仓库或网页代码。**
+4. 打开 **Actions → 更新并发布拾趣**，手动运行一次，或推送新代码触发发布。
+
+工作流文件位于 `.github/workflows/publish.yml`。默认每六小时尝试更新文章。首次运行可能需要逐步积累英文翻译缓存；没有配置密钥时，工作流会停止以保留已经发布的网站。
+
+如果使用免费层，请留意 Google AI Studio 中显示的项目配额与数据使用规则；免费配额不是无限的，具体额度以项目页面为准。
 
 ## 本地运行
 
-建议 Python 3.11（与 GitHub Actions 一致）。
+建议 Python 3.11。安装构建依赖：
 
 ```powershell
 py -3.11 -m pip install -r requirements.txt
-py -3.11 scripts/build.py
+```
+
+如果只想启动已有网页，不需要 API 密钥：
+
+```powershell
 py -3.11 -m http.server 8765 --directory web
 ```
 
-然后打开 http://localhost:8765/。首次运行翻译时会下载开源英译中模型；以后可复用本地已安装模型。若只需要查看现有页面，直接执行最后一条命令即可。
+若要在本地重新抓取 RSS，先设置环境变量 `GEMINI_API_KEY`，然后执行 `py -3.11 scripts/build.py`。本地抓取测试可使用 `py -3.11 scripts/build.py --no-translate`，此时不会请求 AI 服务。
 
-不下载翻译模型、仅调试抓取：
+测试：
 
 ```powershell
-py -3.11 scripts/build.py --no-download
+py -3.11 -m unittest discover -s tests -v
 ```
 
-## 部署
-
-1. 将项目提交至 GitHub 仓库 `main` 分支。
-2. 在仓库 **Settings → Pages** 中将 **Source** 设为 **GitHub Actions**。
-3. 在 **Actions** 中运行 **更新并发布拾趣**，或通过推送自动部署。
-4. 等发布成功后访问对应的 GitHub Pages 地址。
-
-工作流在 `.github/workflows/publish.yml`，默认每六小时尝试抓取和发布。翻译模型缓存用于减少重复下载；GitHub 的定时任务和第三方 RSS 可能延迟或暂时不可用。
-
-## 目录
+## 项目结构
 
 ```text
 .github/workflows/publish.yml   定时构建与发布
-requirements.txt                构建环境依赖
-scripts/build.py                RSS 抓取与文章数据生成
-scripts/translation.py          离线英译中与简繁转换
+requirements.txt                Python 构建依赖
+scripts/build.py                RSS 抓取、去重、输出数据
+scripts/translation.py          Gemini 翻译、简繁转换与缓存
 web/index.html                  阅读页面
-web/app.js                      翻阅、站内阅读与本地收藏
+web/app.js                      翻阅、站内阅读与收藏
 web/styles.css                  页面样式
 web/data/articles.json          构建生成的文章数据
 web/experiment.html             标题盲读实验
 ```
 
-## 数据与隐私
-
-- 文章来源于公开 RSS，保留来源和原文链接，不在本站重新托管原文全文。
-- 翻译在 GitHub Actions 构建环境完成；浏览器不向翻译接口发送用户阅读行为。
-- 收藏保存在浏览器本地，不上传到服务器，也不会在不同设备间同步。
-- GitHub Pages 站点及发布内容公开，请勿将私人信息或密钥提交到仓库。
+仅展示公开来源的必要信息及导读，不默认转载第三方文章全文。
