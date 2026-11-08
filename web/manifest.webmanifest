@@ -1,0 +1,9 @@
+{
+  "name": "拾趣 · 下一页会是什么",
+  "short_name": "拾趣",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3efe6",
+  "theme_color": "#f3efe6",
+  "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

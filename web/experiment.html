@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f0e8">
+<title>拾趣 · 标题盲读实验</title>
+<style>
+:root { --paper:#f4f0e8; --card:#fffefa; --ink:#252d28; --muted:#707b72; --line:#dcded4; --accent:#315e49; --light:#ebf2e9; }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+body{background-image:radial-gradient(#d7d5c9 .5px,transparent .6px);background-size:9px 9px}
+.wrap{max-width:710px;margin:0 auto;padding:34px 22px 68px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{font-family:"Songti SC",Georgia,serif;font-weight:650;font-size:26px;letter-spacing:.12em}
+a{color:var(--accent)}
+.navlink{font-size:13px;text-decoration:none;border:1px solid #bccbbb;border-radius:50px;padding:10px 14px;background:#fffdf9}
+.heading{margin:44px 0 12px;font-family:"Songti SC",Georgia,serif;font-size:clamp(27px,6vw,39px);line-height:1.4;letter-spacing:.02em}
+.intro{color:#57645a;line-height:2;margin:0 0 25px;font-size:15px}
+.card{border:1px solid var(--line);border-radius:22px;background:var(--card);padding:28px 30px 26px;box-shadow:0 18px 55px rgba(57,58,42,.07);min-height:420px;display:flex;flex-direction:column}
+.kicker{font-size:12px;font-weight:600;letter-spacing:.08em;color:#54806b;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.kicker .counter{font-weight:500;color:#899188;letter-spacing:0}
+.topic{display:inline-flex;color:#5e7565;background:#eff3e8;border-radius:60px;padding:7px 12px;font-size:12px;margin-top:33px;align-self:flex-start}
+h2{font-family:"Songti SC",Georgia,serif;font-size:clamp(24px,5vw,34px);line-height:1.58;font-weight:650;margin:15px 0 15px;letter-spacing:.01em;overflow-wrap:anywhere}
+.summary{line-height:1.95;font-size:15px;color:#58645a;margin:0 0 18px}
+.notice{font-size:12px;color:#899088;line-height:1.8;margin-top:auto;padding-top:13px}
+hr{border:0;border-top:1px solid var(--line);margin:21px 0}
+.controls{margin-top:20px;display:flex;flex-wrap:wrap;gap:10px}
+button,.btnlink{border-radius:12px;border:1px solid #bacbbe;background:transparent;color:var(--accent);font:inherit;font-size:14px;font-weight:600;min-height:45px;padding:10px 16px;cursor:pointer;display:inline-flex;justify-content:center;align-items:center;text-decoration:none}
+button:hover,.btnlink:hover{background:#f0f5ed}
+button.primary{background:var(--accent);border-color:var(--accent);color:white;flex:1}
+button.primary:hover{background:#264b3a}
+button.subtle{color:#68796b;border-color:var(--line)}
+button.selected{background:#d9e9db;border-color:#5f8c6e;color:#254a35}
+button:focus-visible,a:focus-visible{outline:3px solid #95b8a0;outline-offset:3px}
+.small-label{font-size:12px;color:#667a6b;font-weight:650;margin:0 0 7px}
+.revealed{background:#f6f5ee;border:1px solid #e3e4d7;border-radius:14px;padding:18px 18px 15px;margin-top:5px}
+.revealed .original-title{font-size:17px;line-height:1.7;font-weight:650;margin:0 0 11px;overflow-wrap:anywhere}
+.source{font-size:13px;color:#647067;line-height:1.85}
+.comment{font-size:12px;color:#6e796f;line-height:1.75;margin:10px 0 0}
+.vote-title{font-size:13px;color:#6e796f;margin:0 0 2px}
+.foot{font-size:12px;color:#7d867d;line-height:1.9;margin:18px 3px}
+.result{font-size:14px;line-height:1.9;color:#536357}
+.result strong{color:#274936}
+.result p{margin:0 0 15px}
+#finishBox{margin-top:20px;background:#edf3eb;padding:20px;border-radius:15px}
+@media(max-width:600px){.wrap{padding:20px 13px max(42px,env(safe-area-inset-bottom))}.heading{margin:27px 8px 13px}.intro{margin-left:8px;margin-right:8px;font-size:14px}.card{padding:23px 20px;min-height:490px;border-radius:19px}.topic{margin-top:28px}h2{font-size:27px}.controls{gap:8px}button{padding:10px 12px}.foot{margin-left:9px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="head"><div class="logo">拾趣<span style="color:#779b78">.</span></div><a class="navlink" href="index.html">返回正常阅读</a></header>
+<h1 class="heading">一篇文章，两种标题。</h1>
+<p class="intro">先看<span style="font-weight:650;color:#355642">中性改写的标题</span>，暂时不知道来自哪家媒体。你可以直接揭晓原题和来源，再决定文章是否值得读。不需要评分，也没有正确答案。</p>
+<section class="card" aria-label="盲读文章卡片">
+  <div class="kicker"><span id="stage">第一眼 · 未揭晓</span><span class="counter" id="position"></span></div>
+  <div class="topic" id="topic"></div>
+  <h2 id="neutralTitle"></h2>
+  <p class="summary" id="summary"></p>
+  <div id="unrevealed">
+    <p class="small-label">第一印象（可选）</p>
+    <div class="controls"><button type="button" id="interested">有兴趣</button><button type="button" id="notInterested" class="subtle">暂不想读</button><button type="button" id="reveal" class="primary">揭晓原题与来源</button></div>
+  </div>
+  <div id="revealed" hidden>
+    <div class="revealed"><p class="small-label">原标题 · 来源公开</p><p class="original-title" id="originalTitle"></p><div class="source" id="publisher"></div><p class="comment" id="rewriteNote"></p></div>
+    <div style="margin-top:20px"><p class="vote-title">看到原题和来源后，阅读兴趣有什么变化？（可选）</p>
+      <div class="controls" id="changedControls"><button type="button" data-change="more">更想读</button><button type="button" data-change="same">差不多</button><button type="button" data-change="less">更不想读</button></div>
+    </div>
+    <div class="controls"><a id="read" class="btnlink" href="#" target="_blank" rel="noopener noreferrer">打开原文 ↗</a><button type="button" id="next" class="primary">再看一篇 →</button></div>
+  </div>
+  <div id="finishBox" hidden><div class="result" id="result"></div><div class="controls"><button id="restart" type="button" class="primary">再翻一轮</button><a class="btnlink" href="index.html">返回普通阅读</a></div></div>
+  <div class="notice" id="hint">人工改写的标题只概括报道或评论的主题，不代表对其结论的认可。</div>
+</section>
+<p class="foot">本页采用 8 篇真实文章的固定样本，来源包括德国之声、中国新闻网、Smithsonian。原标题、文章出处与链接均保留；中性标题为人工改写，并非 AI 自动生成。结果仅供观察自己的第一印象，不代表对任何媒体质量的统计评估。当前页面不会收集、上传或保存你的选择。</p>
+</div>
+<script>
+'use strict';
+// 来源、原文标题与链接均为已核对的 2026 年文章。中性标题为本演示人工撰写，不能冒充媒体原题。
+const items = [
+  {
+    topic:'国际经济 · 评论摘编',
+    neutral:'德国媒体讨论该国贸易政策与自由贸易原则之间的争议',
+    summary:'一篇媒体评论汇编，讨论德国在面对产业竞争时对市场开放和贸易保护的不同态度。结论属于评论者的分析，而非已经证实的事实。',
+    original:'德语媒体：德国实在太虚伪',
+    source:'德国之声中文 · 2026-10-19 · 评论摘编',
+    url:'https://amp.dw.com/zh/%E5%BE%B7%E8%AF%AD%E5%AA%92%E4%BD%93%E5%BE%B7%E5%9B%BD%E5%AE%9E%E5%9C%A8%E5%A4%AA%E8%99%9A%E4%BC%AA/a-79702177',
+    note:'原文标题采用评价性措辞；改写只说明所讨论的政策争议。'
+  },
+  {
+    topic:'产业与社会 · 评论摘编',
+    neutral:'一篇评论讨论中国机器人产业投入与国内消费需求之间的关系',
+    summary:'文章转述其他媒体对中国科技产业发展与经济结构的分析。文中观点需要结合所引用研究和经济数据判断。',
+    original:'墙外文摘：机器人正在击垮习近平？',
+    source:'德国之声中文 · 2026-06-21 · 评论摘编',
+    url:'https://amp.dw.com/zh/%E5%A2%99%E5%A4%96%E6%96%87%E6%91%98%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%AD%A3%E5%9C%A8%E5%87%BB%E5%9E%AE%E4%B9%A0%E8%BF%91%E5%B9%B3/a-77646053',
+    note:'原题中的强烈疑问是修辞表达；改写避免把评论推断写成已证实结论。'
+  },
+  {
+    topic:'国际观察 · 媒体评论',
+    neutral:'德国媒体讨论驻华记者观察到的德国制造业形象变化',
+    summary:'文章介绍一位德国记者的在华观察，以及其他媒体关于经贸关系的评论。个别观察不等于对所有中国人的代表性调查。',
+    original:'德语媒体：从仰慕到惋惜 – 中国人眼中的德国形象',
+    source:'德国之声中文 · 2026-10-22 · 媒体评论',
+    url:'https://amp.dw.com/zh/%E5%BE%B7%E8%AF%AD%E5%AA%92%E4%BD%93%E4%BB%8E%E4%BB%B0%E6%85%95%E5%88%B0%E6%83%8B%E6%83%9C-%E4%B8%AD%E5%9B%BD%E4%BA%BA%E7%9C%BC%E4%B8%AD%E7%9A%84%E5%BE%B7%E5%9B%BD%E5%BD%A2%E8%B1%A1/a-79734614',
+    note:'原题将媒体观察概括为“中国人眼中”的整体印象，改写限制到报道实际涉及的观察范围。'
+  },
+  {
+    topic:'商业与经济 · 分析',
+    neutral:'一篇经济分析介绍中国前三季度先进制造业的表现',
+    summary:'文章列举高技术制造业增加值、出口结构与企业升级情况，并分析制造业发展方向。统计数据与政策评价应分开阅读。',
+    original:'制造业基本盘更加稳固——中国经济三季报亮点解析',
+    source:'中国新闻网（转载《经济日报》）· 2026-11-04 · 经济分析',
+    url:'https://www.chinanews.com.cn/cj/2026/11-04/10725794.shtml',
+    note:'原题含“更加稳固”等评价；改写仅陈述文章所涉及的经济指标与时间范围。'
+  },
+  {
+    topic:'社会与文化 · 会议报道',
+    neutral:'中越学者在昆明讨论非遗影像记录与文化交流',
+    summary:'报道一场在昆明召开的学术研讨会，主题包括影像记录、非物质文化遗产与跨文化交流。',
+    original:'中越学者昆明研讨澜湄流域文明互鉴 以影像促民心相通',
+    source:'中国新闻网 · 2026-11-07 · 会议报道',
+    url:'https://www.chinanews.com.cn/sh/2026/11-07/10728076.shtml',
+    note:'改写将口号式表达转为可核对的活动、地点和议题。'
+  },
+  {
+    topic:'生命科学 · 研究报道',
+    neutral:'浙大团队利用癌细胞的蛋白质翻译错误设计实验性治疗机制',
+    summary:'研究发表于《自然》，团队利用部分癌细胞中较高的移码现象设计基因回路；报道中的有效性证据来自细胞与小鼠实验，尚不能据此认定临床疗效。',
+    original:'让癌细胞“忙中出错”自我引爆 浙大团队成果登《自然》',
+    source:'中国新闻网 · 2026-11-05 · 科研报道',
+    url:'https://www.chinanews.com.cn/jk/2026/11-05/10726966.shtml',
+    note:'原文使用形象比喻；改写保留技术机制及研究阶段。'
+  },
+  {
+    topic:'考古与日常生活 · 新闻报道',
+    neutral:'庞贝古城出土古代木柜，柜内保留个人用品与首饰',
+    summary:'考古人员在一处古罗马住宅中发现包含首饰、香水容器和日常器物的木柜，从物品细节推测居民的生活方式。',
+    original:'This Wooden Wardrobe in Pompeii Remained Sealed for Nearly 2,000 Years. Archaeologists Just Opened It for the First Time',
+    source:'Smithsonian Magazine · 2026-11-06 · 考古报道（英文原题）',
+    url:'https://www.smithsonianmag.com/smart-news/this-wooden-wardrobe-in-pompeii-remained-sealed-for-nearly-2000-years-archaeologists-just-opened-it-for-the-first-time-180989831/',
+    note:'原标题保留英文；中性标题为中文意译与事实概括，而不是原文的逐字翻译。'
+  },
+  {
+    topic:'古生物学 · 科研报道',
+    neutral:'研究人员报告在恐龙化石中发现疑似血液成分，外部学者仍有疑问',
+    summary:'一项研究报告在约 1.15 亿年前的恐龙骨骼中发现疑似红细胞结构和相关化学信号；报道也介绍了其他专家的质疑。',
+    original:'Scientists Say They’ve Found Preserved Dinosaur Blood in a 115-Million-Year-Old Fossil, but Not Everyone Is Convinced',
+    source:'Smithsonian Magazine · 2026-11-04 · 科研报道（英文原题）',
+    url:'https://www.smithsonianmag.com/smart-news/scientists-say-theyve-found-preserved-dinosaur-blood-in-a-115-millino-year-old-fossil-but-not-everyone-is-convinced-180989802/',
+    note:'原题已经包含争议提示；改写主要是压缩和翻译，不代表原题存在意识形态倾向。'
+  }
+];
+// 只在本次页面运行中保存选择，既不持久化，也不上传。
+const records = items.map(()=>({before:null,after:null,seen:false}));
+let order = [...items.keys()];
+for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+let current=0;
+const $=id=>document.getElementById(id);
+function choice(buttons,chosen){buttons.forEach(b=>{b.classList.toggle('selected',b.dataset.value===chosen);b.setAttribute('aria-pressed',String(b.dataset.value===chosen));});}
+function render(){
+  const end=current>=order.length;
+  $('finishBox').hidden=!end;
+  $('topic').hidden=end;$('neutralTitle').hidden=end;$('summary').hidden=end;$('unrevealed').hidden=end;$('revealed').hidden=true;
+  if(end){$('stage').textContent='本轮结束 · 随时可以继续';$('position').textContent='';$('hint').textContent='这是一次阅读体验观察，不是心理测验。';
+    const seen=records.filter(r=>r.seen).length;
+    const interested=records.filter(r=>r.before==='yes').length;
+    const changed=records.filter(r=>r.after==='more'||r.after==='less').length;
+    $('result').replaceChildren();
+    const h=document.createElement('p');h.innerHTML='<strong>你已经揭晓 '+seen+' 篇文章的原题。</strong>';$('result').append(h);
+    const p=document.createElement('p');p.textContent='在可选反馈中，'+interested+' 篇被你标记为“有兴趣”，'+changed+' 篇在看到来源或原始标题后改变了阅读兴趣。';$('result').append(p);
+    const n=document.createElement('p');n.textContent='这并不证明某家媒体偏颇；它只能帮助观察标题表达与媒体身份是否影响你的第一印象。';$('result').append(n);
+    return;
+  }
+  const key=order[current],it=items[key],rec=records[key];
+  $('stage').textContent='第一眼 · 未揭晓';$('position').textContent='本轮第 '+(current+1)+' / '+order.length+' 篇（不是未读任务）';
+  $('topic').textContent=it.topic;$('neutralTitle').textContent=it.neutral;$('summary').textContent=it.summary;
+  $('unrevealed').hidden=false;$('hint').textContent='中性标题和导读由人工整理；并不保证彻底消除框架效应。';
+  ['interested','notInterested'].forEach(id=>{$(id).classList.remove('selected');$(id).setAttribute('aria-pressed','false');});
+  document.querySelectorAll('#changedControls button').forEach(b=>{b.classList.remove('selected');b.setAttribute('aria-pressed','false');});
+}
+function reveal(){
+  if(current>=order.length)return;
+  const key=order[current],it=items[key];records[key].seen=true;
+  $('unrevealed').hidden=true;$('revealed').hidden=false;$('stage').textContent='原题已揭晓 · 自己判断';
+  $('originalTitle').textContent=it.original;
+  $('publisher').textContent=it.source;
+  $('rewriteNote').textContent=it.note;
+  $('read').href=it.url;
+  $('hint').textContent='标题和来源都只是线索；文章是否值得阅读，仍应结合正文事实和证据。';
+}
+$('interested').addEventListener('click',()=>{records[order[current]].before='yes';$('interested').classList.add('selected');$('notInterested').classList.remove('selected');});
+$('notInterested').addEventListener('click',()=>{records[order[current]].before='no';$('notInterested').classList.add('selected');$('interested').classList.remove('selected');});
+$('reveal').addEventListener('click',reveal);
+document.querySelectorAll('#changedControls button').forEach(b=>b.addEventListener('click',()=>{
+  records[order[current]].after=b.dataset.change;
+  document.querySelectorAll('#changedControls button').forEach(other=>other.classList.toggle('selected',other===b));
+}));
+$('next').addEventListener('click',()=>{current++;render();window.scrollTo({top:0,behavior:'instant'});});
+$('restart').addEventListener('click',()=>{records.forEach(r=>{r.before=null;r.after=null;r.seen=false});order=order.reverse();current=0;render()});
+render();
+</script>
+</body>
+</html>

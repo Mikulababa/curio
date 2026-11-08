@@ -1,0 +1,47 @@
+{
+  "updated_at": "2026-11-08T04:12+00:00",
+  "articles": [
+    {
+      "id": "pompeii-wardrobe",
+      "title": "This Wooden Wardrobe in Pompeii Remained Sealed for Nearly 2,000 Years. Archaeologists Just Opened It for the First Time",
+      "editor_title": "庞贝古城出土古代木柜，柜内保留个人用品与首饰",
+      "summary": "考古人员在一处古罗马住宅中发现包含首饰、香水容器和日常器物的木柜，从这些物品观察居民的日常生活。",
+      "source": "Smithsonian",
+      "publisher": "Smithsonian",
+      "topic": "考古与日常生活",
+      "lane": "discovery",
+      "url": "https://www.smithsonianmag.com/smart-news/this-wooden-wardrobe-in-pompeii-remained-sealed-for-nearly-2000-years-archaeologists-just-opened-it-for-the-first-time-180989831/",
+      "image": "",
+      "date": "2026-11-06"
+    },
+    {
+      "id": "cancer-research",
+      "title": "让癌细胞“忙中出错”自我引爆 浙大团队成果登《自然》",
+      "editor_title": "浙大团队利用癌细胞的蛋白质翻译错误设计实验性治疗机制",
+      "summary": "研究团队利用部分癌细胞中较高的移码现象设计基因回路。报道中的有效性证据来自细胞与小鼠实验，不能由此推断临床疗效。",
+      "source": "中新网·健康",
+      "publisher": "中国新闻网",
+      "topic": "生命科学",
+      "lane": "discovery",
+      "url": "https://www.chinanews.com.cn/jk/2026/11-05/10726966.shtml",
+      "image": "",
+      "date": "2026-11-05"
+    },
+    {
+      "id": "dinosaurs-controversy",
+      "title": "Scientists Say They’ve Found Preserved Dinosaur Blood in a 115-Million-Year-Old Fossil, but Not Everyone Is Convinced",
+      "editor_title": "研究人员报告在恐龙化石中发现疑似血液成分，外部学者仍有疑问",
+      "summary": "一项研究报告在远古恐龙化石中发现疑似相关结构和化学信号；其他研究者对证据的解释提出质疑。",
+      "source": "Smithsonian",
+      "publisher": "Smithsonian",
+      "topic": "古生物学",
+      "lane": "discovery",
+      "url": "https://www.smithsonianmag.com/smart-news/scientists-say-theyve-found-preserved-dinosaur-blood-in-a-115-millino-year-old-fossil-but-not-everyone-is-convinced-180989802/",
+      "image": "",
+      "date": "2026-11-04"
+    }
+  ],
+  "sources_ok": 0,
+  "sources_total": 11,
+  "note": "原始 RSS 标题与摘要；非 AI 审核或实时全文抓取。"
+}

@@ -1,0 +1,43 @@
+name: 更新并发布拾趣
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # UTC 时间，每六小时一次；避开整点以减少延迟
+    - cron: "17 2,8,14,20 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "curio-pages"
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: 获取 RSS 并生成文章数据
+        run: python scripts/build.py
+      - name: 配置 GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: 上传静态网站
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - name: 发布到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
