@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const STORAGE_KEY = 'curio-v04-saved';
+  const STORAGE_KEY = 'curio-v04-saved'; // 保留既有收藏，不因升级丢失
   const state = { articles: [], history: [], cursor: -1, used: new Set(), mode: 'browse', saved: readSaved(), banner: '' };
   let currentImageToken = 0;
   let touchY = 0, touchX = 0, wheelAt = 0;
@@ -57,6 +57,7 @@
     $('source').textContent = '';
     $('originalToggle').hidden = true;
     $('originalTitle').hidden = true;
+    $('translationNote').hidden = true;
     $('openButton').removeAttribute('href');
     $('saveButton').disabled = true;
     $('backButton').disabled = state.cursor < 1;
@@ -91,10 +92,17 @@
     $('title').textContent = a.editor_title || a.title;
     $('summary').textContent = a.summary || '这篇文章没有摘要，可以打开原文。';
     $('source').textContent = '选自 ' + (a.source || '未知来源');
+    const hasTranslation = ['machine','partial'].includes(a.translation_status);
+    const hasEditedTitle = Boolean(a.editor_title && a.editor_title !== a.title);
+    const hasOriginalSummary = Boolean(hasTranslation && a.original_summary);
+    $('translationNote').hidden = !hasTranslation;
+    $('translationNote').textContent = hasTranslation ? '中文机器译文，仅供参考 · 以原文为准' : '';
     $('originalTitle').hidden = true;
-    $('originalTitle').textContent = a.title || '';
-    $('originalToggle').textContent = '查看原标题';
-    $('originalToggle').hidden = !(a.editor_title && a.editor_title !== a.title);
+    $('originalTitleText').textContent = '原标题：' + (a.title || '');
+    $('originalSummaryText').textContent = hasOriginalSummary ? '原始摘要：' + a.original_summary : '';
+    $('originalSummaryText').hidden = !hasOriginalSummary;
+    $('originalToggle').textContent = hasTranslation ? '查看英文标题与摘要' : '查看原标题';
+    $('originalToggle').hidden = !(hasEditedTitle || hasOriginalSummary);
     if (/^https?:\/\//i.test(a.url || '')) $('openButton').href = a.url;
     else $('openButton').removeAttribute('href');
     const saved = state.saved.has(idOf(a));
@@ -161,10 +169,13 @@
       if (!response.ok) throw Error('文章数据无法加载（HTTP ' + response.status + '）');
       const payload = await response.json();
       if (!Array.isArray(payload.articles)) throw Error('文章数据格式错误');
-      state.articles = payload.articles.filter(a => a && a.title && a.url);
+      // 中文优先：英语翻译失败时不把长篇英文塞进日常阅读流。
+      // 旧版的人工中文预览仍然兼容。
+      state.articles = payload.articles.filter(a => a && a.title && a.url &&
+        (a.display_language === 'zh' || /[\u3400-\u9fff]/.test(a.editor_title || a.title)));
       state.cursor = -1; state.history = []; state.used.clear();
       if (!state.articles.length) {
-        render(); status('当前文章库为空，请在 GitHub Actions 手动运行发布任务。'); return;
+        render(); status('暂无可用中文文章，请在 GitHub Actions 检查翻译和发布结果。'); return;
       }
       next();
       if (payload.sources_ok === 0) state.banner = '当前为项目内置的示例文章，首次在线抓取成功后会自动替换。';
@@ -183,7 +194,9 @@
   $('reloadButton').addEventListener('click', load);
   $('originalToggle').addEventListener('click', () => {
     const box = $('originalTitle'); box.hidden = !box.hidden;
-    $('originalToggle').textContent = box.hidden ? '查看原标题' : '收起原标题';
+    const a = state.history[state.cursor];
+    const label = ['machine','partial'].includes(a && a.translation_status) ? '查看英文标题与摘要' : '查看原标题';
+    $('originalToggle').textContent = box.hidden ? label : '收起原文信息';
   });
   document.addEventListener('keydown', (e) => {
     if (e.target.closest('button,a,input,textarea')) return;

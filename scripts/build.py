@@ -2,6 +2,7 @@
 """拾趣：用公开 RSS 生成静态文章列表。只用 Python 标准库。"""
 from __future__ import annotations
 
+import argparse
 import concurrent.futures
 import datetime as dt
 import email.utils
@@ -15,14 +16,16 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
+from translation import LocalTranslator, has_chinese
+
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "web" / "data" / "articles.json"
 MAX_BYTES = 2_500_000
-MAX_PER_FEED = 24
+MAX_PER_FEED = 12
 
 # (显示名, 栏目, 机构, 类型, RSS URL)
 # 先保留数量有限、直接可访问的源，不采用第三方 RSSHub 代理。
-# 中文与英文混合；尚无自动翻译或人工质量评分。
+# 中文与英文混合；英文标题与 RSS 导读将在构建时离线译为中文。
 FEEDS = [
     ("中新网·文化", "文化与人文", "中国新闻网", "discovery", "https://www.chinanews.com.cn/rss/culture.xml"),
     ("中新网·生活", "生活与社会", "中国新闻网", "discovery", "https://www.chinanews.com.cn/rss/life.xml"),
@@ -134,6 +137,9 @@ def parse_feed(raw: bytes, source: str, topic: str, publisher: str, lane: str) -
             "title": title,
             "editor_title": "",  # 只有人工确认后才填写；空值显示原标题
             "summary": summary,
+            "original_summary": summary if raw_summary and len(plain(raw_summary, 340)) >= 15 else "",
+            "display_language": "zh" if has_chinese(title) else "en",
+            "translation_status": "original",
             "source": source,
             "publisher": publisher,
             "topic": topic,
@@ -177,7 +183,49 @@ def dedupe(articles: list[dict]) -> list[dict]:
     return result
 
 
+def localize(items: list[dict], translator: LocalTranslator) -> None:
+    """仅转换 RSS 标题和摘要；保留原始信息供读者核对。"""
+    translated = 0
+    failed = 0
+    for item in items:
+        original_title = item.get("title", "")
+        original_summary = item.get("original_summary", "")
+        if has_chinese(original_title):
+            simplified_title = translator.simplify(original_title)
+            simplified_summary = translator.simplify(item.get("summary", ""))
+            if simplified_title != original_title:
+                item["editor_title"] = simplified_title
+            item["summary"] = simplified_summary
+            item["display_language"] = "zh"
+            item["translation_status"] = "converted" if simplified_title != original_title or simplified_summary != item.get("original_summary", "") else "original"
+            continue
+        chinese_title = translator.to_chinese(original_title)
+        if not chinese_title:
+            item["display_language"] = "en"
+            item["translation_status"] = "unavailable"
+            failed += 1
+            continue
+        item["editor_title"] = chinese_title[:200]
+        if original_summary:
+            chinese_summary = translator.to_chinese(original_summary)
+            if chinese_summary:
+                item["summary"] = chinese_summary[:260]
+                item["translation_status"] = "machine"
+            else:
+                item["summary"] = "该文章暂时没有可用的中文导读，可以打开原文了解详情。"
+                item["translation_status"] = "partial"
+        else:
+            item["summary"] = "订阅源未提供足够的文章摘要，可以打开原文了解详情。"
+            item["translation_status"] = "partial"
+        item["display_language"] = "zh"
+        translated += 1
+    print(f"Localization: {translated} English titles translated, {failed} untranslated")
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="生成拾趣阅读数据")
+    parser.add_argument("--no-download", action="store_true", help="不自动下载翻译模型；本地调试适用")
+    args = parser.parse_args()
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
         results = list(pool.map(fetch, FEEDS))
     all_items = [item for _, items, _ in results for item in items]
@@ -187,24 +235,30 @@ def main() -> None:
         print("SOURCE WARNING:", line)
     print(f"Found {len(items)} articles from {len(FEEDS) - len(failures)} / {len(FEEDS)} sources")
 
-    if not items:
-        # 站点已有的有效快照优先保留；但如果仓库内也没有任何文章，直接让构建失败。
+    if items:
+        localize(items, LocalTranslator(allow_download=not args.no_download))
+    else:
+        # 保留项目内现有快照，避免偶发网络故障导致网站无内容。
         fallback = json.loads(OUTPUT.read_text(encoding="utf-8")) if OUTPUT.exists() else {}
         items = fallback.get("articles", [])
         if not items:
             raise SystemExit("No available feeds and no local cached articles; aborting deployment")
         print("All sources unavailable; retaining bundled fallback articles")
 
+    chinese_count = sum(1 for item in items if item.get("display_language") == "zh" or has_chinese(item.get("editor_title", "")))
+    if not chinese_count:
+        raise SystemExit("No Chinese-readable articles available; aborting deployment")
     payload = {
         "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
         "articles": items,
         "sources_ok": len(FEEDS) - len(failures),
         "sources_total": len(FEEDS),
-        "note": "原始 RSS 标题与摘要；非 AI 审核或实时全文抓取。",
+        "chinese_ready": chinese_count,
+        "note": "只使用公开 RSS 摘要。英文条目采用离线机器翻译，非全文翻译或人工审稿。",
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("Wrote", OUTPUT)
+    print("Wrote", OUTPUT, f"({chinese_count} Chinese-readable articles)")
 
 
 if __name__ == "__main__":

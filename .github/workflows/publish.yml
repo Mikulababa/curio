@@ -29,8 +29,19 @@ jobs:
       - name: 安装 Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-      - name: 获取 RSS 并生成文章数据
+          python-version: "3.11"
+      - name: 安装本地翻译依赖
+        run: python -m pip install -r requirements.txt
+      - name: 缓存英译中模型
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/argos-translate/packages
+          key: curio-argos-en-zh-v1
+      - name: 运行基本测试
+        run: python -m unittest discover -s tests -v
+      - name: 获取 RSS、离线翻译并生成文章数据
+        env:
+          ARGOS_DEVICE_TYPE: cpu
         run: python scripts/build.py
       - name: 配置 GitHub Pages
         uses: actions/configure-pages@v5
