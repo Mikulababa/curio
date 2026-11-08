@@ -5,31 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f3efe6">
   <meta name="color-scheme" content="light">
-  <meta name="description" content="拾趣：不猜你喜欢，也不刻意回避你。一本可以随手翻的网络杂志。">
+  <meta name="description" content="拾趣：一本随手翻阅、发现世界不同侧面的网络杂志。">
   <link rel="icon" type="image/svg+xml" href="./icon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=6">
   <title>拾趣 · 下一页会是什么</title>
 </head>
 <body>
-  <div class="layout">
-    <aside class="aside" aria-label="拾趣简介">
-      <div>
-        <div class="overline">A SMALL MAGAZINE FOR THE CURIOUS</div>
-        <div class="logo">拾趣<span>.</span></div>
-        <p class="tagline">下一页会是什么？<br>随便翻翻就好。</p>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="brand-group">
+        <div class="brand">拾趣<span>.</span></div>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <p class="brand-note">下一页会是什么？</p>
       </div>
-      <p class="aside-footer">不猜你喜欢，也不刻意避开你。<br>从不同来源遇见新的事情。<br><br>不设阅读任务，不记录你的兴趣画像。</p>
-    </aside>
+      <div class="header-caption">不猜你喜欢，也不刻意避开你</div>
+    </header>
 
-    <main class="reader">
-      <header class="mobile-header">
-        <div class="mobile-logo">拾趣<span>.</span></div>
-        <div class="mobile-note">下一页会是什么？</div>
-      </header>
+    <main class="reader" id="readerMain">
       <section class="card" aria-label="文章阅读器" id="readerCard">
         <div class="card-head">
           <span class="eyebrow">拾趣 / 随手翻翻</span>
@@ -44,6 +40,11 @@
             <svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="1.5" role="presentation">
               <circle cx="60" cy="60" r="46"/><ellipse cx="60" cy="60" rx="19" ry="46"/><path d="M14 60h92M24 36h72M24 84h72M60 14v92"/>
             </svg>
+          </div>
+          <div id="fallbackVisual" class="fallback-visual" aria-hidden="true">
+            <span class="fallback-label">拾趣 · 见闻</span>
+            <span class="fallback-topic" id="fallbackTopic">不同的世界</span>
+            <span class="fallback-mark">拾</span>
           </div>
           <img id="cover" alt="" referrerpolicy="no-referrer" hidden>
         </div>
@@ -61,18 +62,48 @@
             </div>
           </div>
         </article>
-        <div class="controls">
+        <div class="controls" aria-label="翻阅操作">
           <button type="button" class="primary" id="nextButton">下一篇 <span aria-hidden="true">→</span></button>
-          <a class="outline" id="openButton" target="_blank" rel="noopener noreferrer">读原文 ↗</a>
+          <button type="button" class="outline" id="readButton">站内阅读</button>
           <button type="button" class="icon-button" id="saveButton" aria-label="收藏这篇文章" aria-pressed="false" title="收藏文章">☆</button>
           <button type="button" class="icon-button" id="backButton" aria-label="上一篇" title="上一篇">←</button>
         </div>
       </section>
       <div class="status-line" role="status" id="statusLine"></div>
-      <div class="hint">向上滑动或按 ↓ 阅读下一篇 · 随时可以离开</div>
-      <div class="footer-actions"><button type="button" id="reloadButton">重新检查文章</button><a href="./experiment.html">标题盲读实验 ↗</a></div>
+      <div class="under-card">
+        <span class="hint">向上滑动或按 ↓ 翻下一篇 · 随时离开</span>
+        <div class="footer-actions"><button type="button" id="reloadButton">检查更新</button><a href="./experiment.html">标题盲读实验 ↗</a></div>
+      </div>
     </main>
   </div>
-  <script src="./app.js" defer></script>
+
+  <!-- 阅读层不承诺提供所有文章的全文：仅展示有授权的正文或 RSS 导读。 -->
+  <section class="reading-overlay" id="readingOverlay" role="dialog" aria-modal="true" aria-labelledby="readingTitle" hidden>
+    <div class="reading-shell">
+      <header class="reading-toolbar">
+        <button class="reading-back" id="closeReader" type="button" aria-label="返回文章流">← <span>返回翻阅</span></button>
+        <span class="reading-brand">拾趣<span>.</span></span>
+        <button class="reading-save" id="readingSaveButton" type="button" aria-pressed="false">☆ 收藏</button>
+      </header>
+      <div class="reading-sheet" id="readingSheet" tabindex="-1">
+        <div class="reading-kicker" id="readingTopic"></div>
+        <h2 id="readingTitle"></h2>
+        <p class="reading-byline" id="readingByline"></p>
+        <div class="reading-rule" aria-hidden="true"></div>
+        <div class="reading-content-type" id="readingType"></div>
+        <div class="reading-body" id="readingBody"></div>
+        <div class="reading-original" id="readingOriginal" hidden>
+          <p id="readingOriginalTitle"></p>
+          <p id="readingOriginalSummary"></p>
+        </div>
+        <div class="reading-actions">
+          <button type="button" id="readerOriginalToggle" class="reading-secondary" hidden>查看原文信息</button>
+          <a id="readerOpenLink" class="reading-external" rel="noopener noreferrer" target="_blank">前往媒体原文 ↗</a>
+        </div>
+        <p class="reading-disclaimer" id="readingDisclaimer"></p>
+      </div>
+    </div>
+  </section>
+  <script src="./app.js?v=6" defer></script>
 </body>
 </html>
